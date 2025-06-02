@@ -6,7 +6,7 @@ namespace MaterialCalculatorConsoleApp
     {
         static void Main(string[] args)
         {
-            string connectionString = "Host=localhost;Username=postgres;Password=2928;Database=master_floor";
+            string connectionString = "Host=localhost;Username=postgres;Password=****;Database=master_floor";
 
             Console.WriteLine("Калькулятор необходимого количества материала");
 
