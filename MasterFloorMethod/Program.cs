@@ -8,19 +8,28 @@ namespace MaterialCalculatorConsoleApp
         {
             string connectionString = "Host=localhost;Username=postgres;Password=****;Database=master_floor";
 
+            // Данная строка выводит текстовую информацию пользователю
             Console.WriteLine("Калькулятор необходимого количества материала");
 
+            // Используем try catch для вывода ошибки (а они 100% будут)
             try
             {
+                //Выводим пользователю информацию о том, значение какого атрибута надо ввести
+
+                // ID типа продукции (из БД)
                 Console.Write("Введите ID типа продукции: ");
+                //  Console.ReadLine() считывает вводимые данные и присваивает их переменной productTypeIdInput
                 string? productTypeIdInput = Console.ReadLine();
+                // Если переменная productTypeIdInput (данные которые мы ввели) равна NULL, то выводим сообщение об ошибке
                 if (string.IsNullOrWhiteSpace(productTypeIdInput))
                 {
                     Console.WriteLine("Ошибка: Не введен ID типа продукции");
                     return;
                 }
+                // Если переменная NOT NULL (не пустая), то переводим в тип INT и присваиваем это значение переменной productTypeId для дальнейшего использования в запросе в БД
                 int productTypeId = int.Parse(productTypeIdInput);
 
+                // ID Типа материала (из БД)
                 Console.Write("Введите ID типа материала: ");
                 string? materialTypeIdInput = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(materialTypeIdInput))
@@ -30,6 +39,7 @@ namespace MaterialCalculatorConsoleApp
                 }
                 int materialTypeId = int.Parse(materialTypeIdInput);
 
+                // Количество продукции (любое число, не из БД)
                 Console.Write("Введите количество продукции: ");
                 string? productQuantityInput = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(productQuantityInput))
@@ -39,6 +49,7 @@ namespace MaterialCalculatorConsoleApp
                 }
                 int productQuantity = int.Parse(productQuantityInput);
 
+                // Первый параметр продукции (любое число, не из БД)
                 Console.Write("Введите первый параметр продукции: ");
                 string? productParam1Input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(productParam1Input))
@@ -46,8 +57,10 @@ namespace MaterialCalculatorConsoleApp
                     Console.WriteLine("Ошибка: Не введен первый параметр продукции");
                     return;
                 }
+                // Там, где мы вводим свои данные (не из БД, рандомные) по ТЗ требуется принимать на ввод вещественные, положительные числа, а возвращать целое число (result)
                 double productParam1 = double.Parse(productParam1Input);
 
+                // Второй параметр продукции (любое число, не из БД)
                 Console.Write("Введите второй параметр продукции: ");
                 string? productParam2Input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(productParam2Input))
@@ -57,6 +70,7 @@ namespace MaterialCalculatorConsoleApp
                 }
                 double productParam2 = double.Parse(productParam2Input);
 
+                // Присваиваем переменной result (тип int, требование по ТЗ) функицю CalculateMaterialRequired (написали метод ниже, там происходят все вычисления)
                 int result = CalculateMaterialRequired(
                     productTypeId,
                     materialTypeId,
@@ -65,6 +79,8 @@ namespace MaterialCalculatorConsoleApp
                     productParam2,
                     connectionString);
 
+                // Обработка ошибок. Можно опустить, если уверены, что комиссия будет вводить 100% верные значения
+                // Проверка на отрицательный результат обязателен по ТЗ
                 if (result == -1)
                 {
                     Console.WriteLine("\nОшибка: Невозможно выполнить расчет. Проверьте введенные данные.");
@@ -91,6 +107,7 @@ namespace MaterialCalculatorConsoleApp
             Console.ReadKey();
         }
 
+        // Присваиваем переменные к методу, чтобы можно было их использовать
         public static int CalculateMaterialRequired(
         int productTypeId,
         int materialTypeId,
@@ -106,22 +123,25 @@ namespace MaterialCalculatorConsoleApp
                     connection.Open();
 
                     // Получаем коэффициент типа продукции
-                    decimal typeCoefficient = 0;
+                    double typeCoefficient = 0;
+                    // Выбираем коэффицент из таблицы product_types, где product_type_id равен тому id, который мы ввели
                     string productTypeQuery = "SELECT type_coefficient FROM product_types WHERE product_type_id = @id";
                     using (var cmd = new NpgsqlCommand(productTypeQuery, connection))
                     {
                         cmd.Parameters.AddWithValue("@id", productTypeId);
                         var result = cmd.ExecuteScalar();
+                        // Если такого ID типа продукции нет, то выводим предупреждение об этом
                         if (result == null || result == DBNull.Value)
                         {
                             Console.WriteLine("Тип продукции с указанным ID не найден");
                             return -1;
                         }
-                        typeCoefficient = Convert.ToDecimal(result);
+                        // Конвертируем результат в double
+                        typeCoefficient = Convert.ToDouble(result);
                     }
 
                     // Получаем процент брака материала
-                    decimal defectPercentage = 0;
+                    double defectPercentage = 0;
                     string materialTypeQuery = "SELECT defect_percentage FROM material_types WHERE material_type_id = @id";
                     using (var cmd = new NpgsqlCommand(materialTypeQuery, connection))
                     {
@@ -132,10 +152,10 @@ namespace MaterialCalculatorConsoleApp
                             Console.WriteLine("Тип материала с указанным ID не найден");
                             return -1;
                         }
-                        defectPercentage = Convert.ToDecimal(result);
+                        defectPercentage = Convert.ToDouble(result);
                     }
 
-                    // Проверка входных параметров
+                    // Проверка входных параметров (рандомные данные, проверка на положительное число)
                     if (productQuantity <= 0 || productParam1 <= 0 || productParam2 <= 0)
                     {
                         Console.WriteLine("Один или несколько параметров имеют недопустимое значение (<= 0)");
@@ -149,7 +169,7 @@ namespace MaterialCalculatorConsoleApp
                     double totalMaterial = materialPerUnit * productQuantity;
                     double materialWithDefect = totalMaterial / (1 - (double)defectPercentage);
 
-                    // Округляем вверх до целого числа
+                    // Округляем вверх до целого числа и присваиваем тип INT, как требуется в ТЗ
                     return (int)Math.Ceiling(materialWithDefect);
                 }
             }
